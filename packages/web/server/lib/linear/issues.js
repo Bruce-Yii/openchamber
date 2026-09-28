@@ -375,7 +375,10 @@ export async function listLinearIssues({ query, cursor, status, assignee, teamId
 
     const after = readTrimmedString(cursor) || null;
     const term = readTrimmedString(query);
-    const filter = buildIssueListFilter({ status, assignee, teamId, priority });
+    // Browsing lists incomplete states, but a term names one issue, so a search has to reach
+    // what the identifier path already reaches. An explicit status still wins.
+    const resolvedStatus = term && !readTrimmedString(status) ? 'all' : status;
+    const filter = buildIssueListFilter({ status: resolvedStatus, assignee, teamId, priority });
     const variables = {
       first: PAGE_SIZE,
     };

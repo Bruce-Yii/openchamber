@@ -179,6 +179,33 @@ describe('Linear issue list/get', () => {
     expect(byId.hasMore).toBe(false);
   });
 
+  it('drops the default state filter for a search but keeps an explicit status', async () => {
+    const filters = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url, options) => {
+      filters.push(JSON.parse(options.body).variables.filter ?? null);
+      return jsonResponse({
+        data: {
+          searchIssues: {
+            nodes: [issueNode],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      });
+    }));
+
+    await listLinearIssues({ query: 'login' });
+    expect(filters[0]).toBeNull();
+
+    await listLinearIssues({ query: 'login', teamId: 'team-eng' });
+    expect(filters[1]).toEqual({ team: { id: { eq: 'team-eng' } } });
+
+    await listLinearIssues({ query: 'login', status: 'open' });
+    expect(filters[2]).toEqual({ state: { type: { nin: ['completed', 'canceled', 'duplicate'] } } });
+
+    await listLinearIssues({ query: 'login', status: 'completed' });
+    expect(filters[3]).toEqual({ state: { type: { eq: 'completed' } } });
+  });
+
   it('applies status, assignee, team, and priority list filters', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_url, options) => {
       const body = JSON.parse(options.body);
